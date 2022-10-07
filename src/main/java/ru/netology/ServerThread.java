@@ -1,12 +1,14 @@
 package ru.netology;
 
+
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 
 public class ServerThread {
@@ -14,18 +16,17 @@ public class ServerThread {
             "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html",
             "/events.js");
 
-    public void processing(BufferedReader in, BufferedOutputStream out)
-            throws IOException {
+    public void processing(Socket socket) throws IOException {
+        final var in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        final var out = new BufferedOutputStream(socket.getOutputStream());
+
         while (true) {
-            String requestLine = in.readLine();
-            System.out.println(requestLine);
-            String [] parts = requestLine.split(" ");
-            System.out.println(Arrays.toString(parts));
+            final var requestLine = in.readLine();
+            final var parts = requestLine.split(" ");
 
             if (parts.length != 3) {
-                return;
+                continue;
             }
-
             final var path = parts[1];
             if (!validPaths.contains(path)) {
                 out.write((
@@ -35,7 +36,7 @@ public class ServerThread {
                                 "\r\n"
                 ).getBytes());
                 out.flush();
-                return;
+                continue;
             }
 
             final var filePath = Path.of(".", "public", path);
@@ -56,7 +57,7 @@ public class ServerThread {
                 ).getBytes());
                 out.write(content);
                 out.flush();
-                return;
+                continue;
             }
 
             final var length = Files.size(filePath);

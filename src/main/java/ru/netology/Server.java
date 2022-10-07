@@ -1,28 +1,37 @@
 package ru.netology;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.ServerSocket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class Server extends Thread{
+public class Server extends Thread {
+    private final ExecutorService threadPool = Executors.newFixedThreadPool(64);
+    ServerThread serverThread = new ServerThread();
 
     @Override
-    public void run(){
-        try (final var serverSocket = new ServerSocket(9999)) {
-            while (true) {
-                try (
-                        final var socket = serverSocket.accept();
-                        final var in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                        final var out = new BufferedOutputStream(socket.getOutputStream()))
-                {
-                    ServerThread serverThread = new ServerThread();
-                    serverThread.processing(in, out);
-                }
-            }
+    public void run() {
+        ServerSocket serverSocket;
+        try {
+            serverSocket = new ServerSocket(9999);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+
+        while (true) {
+            try {
+                var socket = serverSocket.accept();
+                threadPool.submit(() -> {
+                    try {
+                        serverThread.processing(socket);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+
+            }
         }
     }
 }
